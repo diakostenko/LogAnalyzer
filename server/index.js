@@ -9,22 +9,22 @@ const logsRouter = require('./routes/logs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// middleware
 app.use(cors());
 app.use(express.json());
 
-// Статические файлы фронта
+// фронтенд
 app.use(express.static(path.join(__dirname, '../client')));
 
-// API роуты
+// роутер
 app.use('/api/logs', logsRouter);
 
-// Для всех остальных запросов отдаём index.html (SPA-подход)
-app.get('*', (req, res) => {
+// спа
+app.get('/{*splat}', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/index.html'));
 });
 
-// Подключение к MongoDB
+// подключение к MongoDB
 mongoose
     .connect(process.env.MONGO_URI || 'mongodb://localhost:27017/loganalyzer')
     .then(() => {

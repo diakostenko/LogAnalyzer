@@ -1,12 +1,9 @@
 const fs = require('fs');
 const readline = require('readline');
 
-// Регулярка для nginx/apache combined log format:
-// 127.0.0.1 - - [10/Oct/2024:13:55:36 +0000] "GET /index.html HTTP/1.1" 200 1024
 const LOG_REGEX =
     /^(\S+)\s+\S+\s+\S+\s+\[([^\]]+)\]\s+"(\S+)\s+(\S+)\s+\S+"\s+(\d{3})\s+(\d+|-)/;
 
-// Парсим строку даты вида "10/Oct/2024:13:55:36 +0000"
 function parseLogDate(dateStr) {
     const months = {
         Jan: '01', Feb: '02', Mar: '03', Apr: '04',
@@ -20,11 +17,7 @@ function parseLogDate(dateStr) {
     return new Date(`${year}-${months[mon]}-${day}T${time}Z`);
 }
 
-/**
- * Читает файл построчно и возвращает массив распарсенных записей.
- * @param {string} filePath — путь к лог-файлу
- * @returns {Promise<Array>} массив объектов { ip, timestamp, method, path, status, size }
- */
+// читает файл построчно, возвращает распаршенные данные
 async function parseLogFile(filePath) {
     const entries = [];
     const skipped = [];
@@ -52,7 +45,7 @@ async function parseLogFile(filePath) {
     }
 
     if (skipped.length > 0) {
-        console.warn(`⚠️  Пропущено ${skipped.length} нераспознанных строк`);
+        console.warn(`Пропущено ${skipped.length} нераспознанных строк`);
     }
 
     return entries;

@@ -1,4 +1,4 @@
-// принимает распаршенные данные и возвращает стату
+// принимает массив распаршенных данных, возвращает анализ и аномалии
 function analyze(entries) {
     if (!entries.length) {
         return {
@@ -13,44 +13,61 @@ function analyze(entries) {
         };
     }
 
-    // Базовые счётчики
-    const ipMap = {};         // ip -> { count, errors }
-    const endpointMap = {};   // path -> { count, errorCount }
-    const hourMap = {};       // hour (0-23) -> count
-    const minuteMap = {};     // "YYYY-MM-DDTHH:MM" -> count (для пиков)
+    const ipMap = {};
+    const endpointMap = {};
+    const hourMap = {};
+    const minuteMap = {};
     const statusCodes = { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 };
     let errorCount = 0;
+    const ipPathErrorMap = {};   // ip -> { path -> count } для 4xx
+    const ipUniquePathsMap = {}; // ip -> Set путей
+    const ip404Map = {};         // ip -> count 404
 
     for (const entry of entries) {
         const { ip, timestamp, path, status } = entry;
 
-        // Статус-коды
+        // статус-коды
         if (status >= 200 && status < 300) statusCodes['2xx']++;
         else if (status >= 300 && status < 400) statusCodes['3xx']++;
         else if (status >= 400 && status < 500) { statusCodes['4xx']++; errorCount++; }
         else if (status >= 500) { statusCodes['5xx']++; errorCount++; }
 
-        // По часам
+        // по часам
         const hour = timestamp.getUTCHours();
         hourMap[hour] = (hourMap[hour] || 0) + 1;
 
-        // По минутам (для детекции пика)
-        const minuteKey = timestamp.toISOString().slice(0, 16); // "2024-10-10T13:55"
+        // по минутам
+        const minuteKey = timestamp.toISOString().slice(0, 16);
         minuteMap[minuteKey] = (minuteMap[minuteKey] || 0) + 1;
 
-        // По IP
-        if (!ipMap[ip]) ipMap[ip] = { count: 0, errors: 0, endpoints: new Set() };
+        // по IP
+        if (!ipMap[ip]) ipMap[ip] = { count: 0, errors: 0, errors4xx: 0, errors5xx: 0 };
         ipMap[ip].count++;
-        if (status >= 400) ipMap[ip].errors++;
-        ipMap[ip].endpoints.add(path);
+        if (status >= 400 && status < 500) { ipMap[ip].errors++; ipMap[ip].errors4xx++; }
+        if (status >= 500) { ipMap[ip].errors++; ipMap[ip].errors5xx++; }
 
-        // По эндпоинтам
+        // уникальные пути на IP
+        if (!ipUniquePathsMap[ip]) ipUniquePathsMap[ip] = new Set();
+        ipUniquePathsMap[ip].add(path);
+
+        // 4xx по пути на IP (для брутфорс-детекции)
+        if (status >= 400 && status < 500) {
+            if (!ipPathErrorMap[ip]) ipPathErrorMap[ip] = {};
+            ipPathErrorMap[ip][path] = (ipPathErrorMap[ip][path] || 0) + 1;
+        }
+
+        // 404 на IP (для сканер-детекции)
+        if (status === 404) {
+            ip404Map[ip] = (ip404Map[ip] || 0) + 1;
+        }
+
+        // по эндпоинтам
         if (!endpointMap[path]) endpointMap[path] = { count: 0, errorCount: 0 };
         endpointMap[path].count++;
         if (status >= 400) endpointMap[path].errorCount++;
     }
 
-    // Топ IP
+    // топ ip
     const avgRequestsPerIP = entries.length / Object.keys(ipMap).length;
     const SUSPICIOUS_THRESHOLD = Math.max(avgRequestsPerIP * 5, 200);
     const WATCH_THRESHOLD = Math.max(avgRequestsPerIP * 2, 100);
@@ -62,35 +79,33 @@ function analyze(entries) {
             ip,
             count: data.count,
             errors: data.errors,
-            flag: data.count >= SUSPICIOUS_THRESHOLD
-                ? 'suspicious'
-                : data.count >= WATCH_THRESHOLD
-                    ? 'watch'
+            flag: data.count >= SUSPICIOUS_THRESHOLD ? 'suspicious'
+                : data.count >= WATCH_THRESHOLD ? 'watch'
                     : 'normal',
         }));
 
-    // Топ эндпоинтов
+    // топ эндпоинтов
     const topEndpoints = Object.entries(endpointMap)
         .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 20)
         .map(([path, data]) => ({ path, ...data }));
 
-    // Запросы по часам (массив 0-23)
+    // запросы по часам
     const requestsByHour = Array.from({ length: 24 }, (_, i) => ({
         hour: i,
         count: hourMap[i] || 0,
     }));
 
-    // Детекция аномалий
+    // аномалии
     const anomalies = detectAnomalies({
         entries,
         ipMap,
+        ipPathErrorMap,
+        ipUniquePathsMap,
+        ip404Map,
         endpointMap,
         minuteMap,
-        hourMap,
         statusCodes,
-        avgRequestsPerIP,
-        SUSPICIOUS_THRESHOLD,
     });
 
     return {
@@ -105,10 +120,10 @@ function analyze(entries) {
     };
 }
 
-function detectAnomalies({ entries, ipMap, endpointMap, minuteMap, statusCodes, SUSPICIOUS_THRESHOLD }) {
+function detectAnomalies({ entries, ipMap, ipPathErrorMap, ipUniquePathsMap, ip404Map, minuteMap, statusCodes }) {
     const anomalies = [];
 
-    // 1. Пик трафика — минута с резким превышением среднего
+    // пик трафика
     const minuteCounts = Object.values(minuteMap);
     if (minuteCounts.length > 1) {
         const avgPerMinute = minuteCounts.reduce((a, b) => a + b, 0) / minuteCounts.length;
@@ -125,33 +140,45 @@ function detectAnomalies({ entries, ipMap, endpointMap, minuteMap, statusCodes, 
         }
     }
 
-    // 2. Брутфорс — IP с высокой долей 4xx ошибок и большим числом запросов
+    // брутфорс
     for (const [ip, data] of Object.entries(ipMap)) {
-        const errorRate = data.errors / data.count;
-        if (data.count >= 200 && errorRate >= 0.8) {
+        const clientErrorRate = data.errors4xx / data.count;
+        if (data.count < 100 || clientErrorRate < 0.7) continue;
+
+        const pathCounts = Object.values(ipPathErrorMap[ip] || {});
+        const totalErrors4xx = pathCounts.reduce((a, b) => a + b, 0);
+        const maxPathCount = pathCounts.length ? Math.max(...pathCounts) : 0;
+        const concentration = totalErrors4xx > 0 ? maxPathCount / totalErrors4xx : 0;
+
+        if (concentration >= 0.5) {
+            const topPath = Object.entries(ipPathErrorMap[ip] || {})
+                .sort((a, b) => b[1] - a[1])[0]?.[0] || '?';
             anomalies.push({
                 type: 'bruteforce',
                 severity: 'critical',
-                title: `Брутфорс с ${ip} — ${data.count} запросов, ${Math.round(errorRate * 100)}% ошибок`,
-                description: `IP сделал ${data.errors} запросов с кодом 4xx из ${data.count}. Признак перебора паролей или сканирования.`,
+                title: `Брутфорс с ${ip} — ${data.count} запросов на ${topPath}`,
+                description: `${data.errors4xx} запросов с кодом 4xx из ${data.count} (${Math.round(clientErrorRate * 100)}%), большинство направлены на один эндпоинт. Признак перебора паролей.`,
             });
         }
     }
 
-    // 3. Сканирование эндпоинтов — путь с почти 100% ошибок и приличным трафиком
-    for (const [path, data] of Object.entries(endpointMap)) {
-        const errorRate = data.errorCount / data.count;
-        if (data.count >= 50 && errorRate >= 0.95) {
+    // сканирование
+    for (const [ip, data] of Object.entries(ipMap)) {
+        const uniquePaths = ipUniquePathsMap[ip]?.size || 0;
+        const notFoundCount = ip404Map[ip] || 0;
+        const notFoundRate = notFoundCount / data.count;
+
+        if (data.count >= 30 && uniquePaths >= 5 && notFoundRate >= 0.5) {
             anomalies.push({
                 type: 'scan',
                 severity: 'warning',
-                title: `Сканирование ${path} — ${data.count} запросов, все с ошибкой`,
-                description: `${data.errorCount} из ${data.count} запросов вернули ошибку. Возможно: автоматический сканер уязвимостей.`,
+                title: `Сканирование с ${ip} — ${uniquePaths} уникальных путей, ${Math.round(notFoundRate * 100)}% ответов 404`,
+                description: `IP перебирает разные пути (${data.count} запросов, ${notFoundCount} ошибок 404). Признак автоматического сканера уязвимостей.`,
             });
         }
     }
 
-    // 4. Рост ошибок 5xx — проблемы на сервере
+    // повышенный уровень 5xx
     const total = entries.length;
     const serverErrorRate = statusCodes['5xx'] / total;
     if (statusCodes['5xx'] >= 50 && serverErrorRate >= 0.02) {
@@ -159,7 +186,7 @@ function detectAnomalies({ entries, ipMap, endpointMap, minuteMap, statusCodes, 
             type: 'server_error',
             severity: 'warning',
             title: `Повышенный уровень ошибок 5xx — ${statusCodes['5xx']} случаев (${Math.round(serverErrorRate * 100)}%)`,
-            description: `Сервер вернул ${statusCodes['5xx']} ошибок 5xx. Возможный сбой приложения или базы данных.`,
+            description: `Сервер вернул ${statusCodes['5xx']} ошибок 5xx. Возможный сбой приложения или базы данных в период пика.`,
         });
     }
 

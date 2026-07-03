@@ -1,0 +1,99 @@
+/*  глобальные стили  */
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* тёмные карточки */
+.bg-dark-subtle {
+  background-color: #1a1d21 !important;
+}
+
+/* dashed border для drop zone */
+.border-dashed {
+  border-style: dashed !important;
+}
+
+/* drop zone */
+.drop-zone {
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.drop-zone:hover,
+.drop-zone.drag-over {
+  background-color: rgba(13, 110, 253, 0.07);
+  border-color: #0d6efd !important;
+}
+
+/* навигация */
+.nav-tabs .nav-link {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  transition: color 0.15s, border-color 0.15s;
+}
+.nav-tabs .nav-link.active {
+  color: #fff !important;
+  border-bottom-color: #0d6efd;
+  background: transparent;
+}
+.nav-tabs .nav-link:hover:not(.active) {
+  color: #ccc !important;
+}
+
+/* таблицы */
+.table-dark {
+  --bs-table-bg: transparent;
+  --bs-table-hover-bg: rgba(255, 255, 255, 0.04);
+}
+.table th {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* бейдж статуса IP */
+.flag-suspicious { color: #f87171; }
+.flag-watch      { color: #fbbf24; }
+.flag-normal     { color: #86efac; }
+
+/* анимация появления контента */
+#content {
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* карточки аномалий */
+.anomaly-card {
+  border-left: 3px solid transparent;
+}
+.anomaly-card.critical {
+  border-left-color: #ef4444;
+}
+.anomaly-card.warning {
+  border-left-color: #f59e0b;
+}
+
+/* история */
+.history-item {
+  background-color: #1a1d21;
+  border: 1px solid #2d3238 !important;
+  border-radius: 8px !important;
+  margin-bottom: 8px;
+  transition: background-color 0.15s;
+}
+.history-item:hover {
+  background-color: #1f2328 !important;
+  text-decoration: none;
+}
+
+/* скроллбар */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3d4450; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #555e6b; }

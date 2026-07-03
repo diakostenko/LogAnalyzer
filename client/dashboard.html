@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Дашборд — Log Analyzer</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.2.0/dist/tabler-icons.min.css" rel="stylesheet" />
+  <link href="css/style.css" rel="stylesheet" />
+</head>
+<body class="bg-dark text-light">
+
+<!-- навигация -->
+<nav class="navbar navbar-dark bg-dark border-bottom border-secondary sticky-top">
+  <div class="container-fluid px-4">
+    <a href="index.html" class="navbar-brand fw-semibold d-flex align-items-center gap-2">
+      <i class="ti ti-file-analytics fs-5 text-primary"></i>
+      Log Analyzer
+    </a>
+    <div class="d-flex align-items-center gap-3">
+      <span id="navFilename" class="text-secondary small d-none d-md-inline"></span>
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+          <i class="ti ti-download me-1"></i>Экспорт
+        </button>
+        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+          <li><a class="dropdown-item export-btn" data-format="json" href="#"><i class="ti ti-braces me-2"></i>JSON</a></li>
+          <li><a class="dropdown-item export-btn" data-format="txt" href="#"><i class="ti ti-file-text me-2"></i>TXT (отчёт)</a></li>
+        </ul>
+      </div>
+      <a href="history.html" class="btn btn-outline-secondary btn-sm">
+        <i class="ti ti-history me-1"></i>История
+      </a>
+      <a href="index.html" class="btn btn-outline-primary btn-sm">
+        <i class="ti ti-upload me-1"></i>Новый файл
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- вкладки -->
+<div class="border-bottom border-secondary bg-dark sticky-top" style="top:57px;z-index:10;">
+  <div class="container-fluid px-4">
+    <ul class="nav nav-tabs border-0" id="mainTabs">
+      <li class="nav-item">
+        <button class="nav-link text-secondary active" data-tab="overview">
+          <i class="ti ti-layout-dashboard me-1"></i>Обзор
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link text-secondary" data-tab="anomalies">
+          <i class="ti ti-alert-triangle me-1"></i>
+          Аномалии
+          <span id="anomalyBadge" class="badge bg-danger ms-1 d-none"></span>
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link text-secondary" data-tab="ips">
+          <i class="ti ti-network me-1"></i>IP-адреса
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link text-secondary" data-tab="entries">
+          <i class="ti ti-list me-1"></i>Записи
+        </button>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="container-fluid px-4 py-4">
+
+  <!-- загрузка брух -->
+  <div id="loadingState" class="text-center py-5">
+    <div class="spinner-border text-primary mb-3"></div>
+    <p class="text-secondary">Загружаем результаты анализа...</p>
+  </div>
+
+  <!-- контент -->
+  <div id="content" class="d-none">
+
+    <!-- обзор -->
+    <div id="tab-overview">
+
+      <!-- карточки статистики -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="card bg-dark-subtle border-secondary h-100">
+            <div class="card-body">
+              <div class="small text-secondary text-uppercase mb-1">Всего запросов</div>
+              <div id="statTotal" class="fs-3 fw-bold"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card bg-dark-subtle border-secondary h-100">
+            <div class="card-body">
+              <div class="small text-secondary text-uppercase mb-1">Уникальных IP</div>
+              <div id="statIPs" class="fs-3 fw-bold text-info"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card bg-dark-subtle border-secondary h-100">
+            <div class="card-body">
+              <div class="small text-secondary text-uppercase mb-1">Ошибок 4xx/5xx</div>
+              <div id="statErrors" class="fs-3 fw-bold text-danger"></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card bg-dark-subtle border-secondary h-100">
+            <div class="card-body">
+              <div class="small text-secondary text-uppercase mb-1">Аномалий</div>
+              <div id="statAnomalies" class="fs-3 fw-bold text-warning"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- колонки диаграммы -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-8">
+          <div class="card bg-dark-subtle border-secondary h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Запросы по часам</h6>
+                <span class="badge bg-danger d-none" id="peakBadge">Пик обнаружен</span>
+              </div>
+              <canvas id="chartHours" height="120"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card bg-dark-subtle border-secondary h-100">
+            <div class="card-body">
+              <h6 class="mb-3">Статус-коды</h6>
+              <canvas id="chartStatus" height="180"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- топ эндпоинтов -->
+      <div class="card bg-dark-subtle border-secondary">
+        <div class="card-body">
+          <h6 class="mb-3">Топ эндпоинтов</h6>
+          <div class="table-responsive">
+            <table class="table table-dark table-sm table-hover mb-0">
+              <thead class="text-secondary small">
+              <tr>
+                <th>Путь</th>
+                <th class="text-end">Запросов</th>
+                <th class="text-end">Ошибок</th>
+                <th class="text-end">% ошибок</th>
+              </tr>
+              </thead>
+              <tbody id="endpointsTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- аномалии -->
+    <div id="tab-anomalies" class="d-none">
+      <div id="anomaliesList"></div>
+      <div id="noAnomalies" class="d-none text-center py-5">
+        <i class="ti ti-circle-check fs-1 text-success mb-3 d-block"></i>
+        <h5>Аномалий не обнаружено</h5>
+        <p class="text-secondary">Трафик выглядит нормально.</p>
+      </div>
+    </div>
+
+    <!-- ip-адреса -->
+    <div id="tab-ips" class="d-none">
+      <div class="card bg-dark-subtle border-secondary">
+        <div class="card-body">
+          <h6 class="mb-3">Топ IP-адресов</h6>
+          <div class="table-responsive">
+            <table class="table table-dark table-sm table-hover mb-0">
+              <thead class="text-secondary small">
+              <tr>
+                <th>IP-адрес</th>
+                <th class="text-end">Запросов</th>
+                <th class="text-end">Ошибок</th>
+                <th>Статус</th>
+              </tr>
+              </thead>
+              <tbody id="ipsTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- записи -->
+    <div id="tab-entries" class="d-none">
+      <!-- поиск фильтры -->
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <input id="searchInput" type="text" class="form-control form-control-sm bg-dark border-secondary text-light"
+               placeholder="Поиск по IP или пути..." style="max-width:240px;" />
+        <select id="statusFilter" class="form-select form-select-sm bg-dark border-secondary text-light" style="max-width:160px;">
+          <option value="">Все статусы</option>
+          <option value="2">2xx — успех</option>
+          <option value="3">3xx — редирект</option>
+          <option value="4">4xx — ошибка клиента</option>
+          <option value="5">5xx — ошибка сервера</option>
+        </select>
+        <span id="entriesCount" class="text-secondary small align-self-center"></span>
+      </div>
+      <div class="card bg-dark-subtle border-secondary">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-dark table-sm table-hover mb-0 font-monospace">
+              <thead class="text-secondary small">
+              <tr>
+                <th>Время</th>
+                <th>IP</th>
+                <th>Метод</th>
+                <th>Путь</th>
+                <th>Статус</th>
+              </tr>
+              </thead>
+              <tbody id="entriesTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <!-- странички -->
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <button id="prevPage" class="btn btn-outline-secondary btn-sm" disabled>
+          <i class="ti ti-chevron-left"></i> Назад
+        </button>
+        <span id="pageInfo" class="text-secondary small"></span>
+        <button id="nextPage" class="btn btn-outline-secondary btn-sm">
+          Вперёд <i class="ti ti-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

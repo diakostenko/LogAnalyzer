@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log Analyzer</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.2.0/dist/tabler-icons.min.css" rel="stylesheet" />
+  <link href="css/style.css" rel="stylesheet" />
+</head>
+<body class="bg-dark text-light min-vh-100 d-flex flex-column">
+
+  <!-- навигация -->
+  <nav class="navbar navbar-dark bg-dark border-bottom border-secondary">
+    <div class="container-fluid px-4">
+      <span class="navbar-brand fw-semibold d-flex align-items-center gap-2">
+        <i class="ti ti-file-analytics fs-5 text-primary"></i>
+        Log Analyzer
+      </span>
+      <a href="history.html" class="btn btn-outline-secondary btn-sm">
+        <i class="ti ti-history me-1"></i>История
+      </a>
+    </div>
+  </nav>
+
+  <!-- подпись -->
+  <main class="flex-grow-1 d-flex align-items-center justify-content-center py-5">
+    <div class="container" style="max-width: 600px;">
+
+      <div class="text-center mb-5">
+        <div class="display-1 mb-3">
+          <i class="ti ti-shield-search text-primary"></i>
+        </div>
+        <h1 class="h2 fw-bold">Анализ лог-файлов</h1>
+        <p class="text-secondary">Загрузи nginx или apache лог — получи дашборд с аномалиями, статистикой и топом IP за секунды.</p>
+      </div>
+
+      <!-- загрузка -->
+      <div class="card bg-dark-subtle border-secondary">
+        <div class="card-body p-4">
+
+          <!-- drop zone -->
+          <div id="dropZone"
+               class="border border-secondary border-dashed rounded-3 p-5 text-center mb-4 drop-zone"
+               style="cursor:pointer;">
+            <i class="ti ti-cloud-upload fs-1 text-secondary mb-3 d-block"></i>
+            <p class="mb-1 fw-medium">Перетащи файл сюда</p>
+            <p class="text-secondary small mb-3">или нажми для выбора</p>
+            <div class="d-flex justify-content-center gap-2">
+              <span class="badge bg-secondary">.log</span>
+              <span class="badge bg-secondary">.txt</span>
+              <span class="badge bg-secondary">.gz</span>
+            </div>
+            <input type="file" id="fileInput" accept=".log,.txt,.gz" class="d-none" />
+          </div>
+
+          <!-- инфа про выбранный файл -->
+          <div id="fileInfo" class="d-none mb-3">
+            <div class="d-flex align-items-center gap-3 p-3 bg-body-secondary rounded-3">
+              <i class="ti ti-file-text fs-4 text-primary"></i>
+              <div class="flex-grow-1 overflow-hidden">
+                <div id="fileName" class="fw-medium text-truncate"></div>
+                <div id="fileSize" class="text-secondary small"></div>
+              </div>
+              <button id="clearFile" class="btn btn-sm btn-outline-secondary">
+                <i class="ti ti-x"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- кнопка загрузки -->
+          <button id="uploadBtn" class="btn btn-primary w-100" disabled>
+            <i class="ti ti-upload me-2"></i>Анализировать
+          </button>
+
+          <!-- прогресс -->
+          <div id="progressWrap" class="d-none mt-3">
+            <div class="d-flex justify-content-between small text-secondary mb-1">
+              <span id="progressLabel">Загрузка файла...</span>
+              <span id="progressPct">0%</span>
+            </div>
+            <div class="progress" style="height:6px;">
+              <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                   style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- ошибка -->
+          <div id="errorAlert" class="alert alert-danger mt-3 d-none" role="alert">
+            <i class="ti ti-alert-circle me-2"></i>
+            <span id="errorText"></span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- описания типааа -->
+      <div class="row g-3 mt-2 text-center">
+        <div class="col-4">
+          <div class="p-3">
+            <i class="ti ti-chart-bar fs-4 text-primary mb-2 d-block"></i>
+            <div class="small text-secondary">Графики трафика по часам</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-3">
+            <i class="ti ti-alert-triangle fs-4 text-warning mb-2 d-block"></i>
+            <div class="small text-secondary">Автодетекция аномалий</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-3">
+            <i class="ti ti-network fs-4 text-info mb-2 d-block"></i>
+            <div class="small text-secondary">Топ IP и эндпоинтов</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/upload.js"></script>
+</body>
+</html>

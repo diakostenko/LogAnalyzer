@@ -1,4 +1,5 @@
 const fs = require('fs');
+const zlib = require('zlib');
 const readline = require('readline');
 
 const LOG_REGEX =
@@ -23,6 +24,10 @@ async function parseLogFile(filePath) {
     const skipped = [];
 
     const fileStream = fs.createReadStream(filePath);
+
+    const isGzip = filePath.endsWith('.gz');
+    const input = isGzip ? fileStream.pipe(zlib.createGunzip()) : fileStream;
+
     const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
 
     for await (const line of rl) {

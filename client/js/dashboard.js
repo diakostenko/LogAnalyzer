@@ -183,15 +183,20 @@ function renderAnomalies(anomalies) {
   `).join('');
 }
 
+
 // таблица ip
 function renderIPs(ips) {
   const tbody = document.getElementById('ipsTable');
   tbody.innerHTML = ips.map(ip => {
     const flagLabel = ip.flag === 'suspicious' ? 'Подозрительный' : ip.flag === 'watch' ? 'Следим' : 'Норма';
     const flagClass = ip.flag === 'suspicious' ? 'flag-suspicious' : ip.flag === 'watch' ? 'flag-watch' : 'flag-normal';
+    const geo = ip.country
+        ? `<span class="text-secondary small" title="${ip.city || ''}">${ip.country}${ip.city ? ` · ${ip.city}` : ''}</span>`
+        : `<span class="text-secondary">—</span>`;
     return `
       <tr>
         <td class="font-monospace">${ip.ip}</td>
+        <td>${geo}</td>
         <td class="text-end">${ip.count.toLocaleString('ru')}</td>
         <td class="text-end ${ip.errors > 0 ? 'text-danger' : 'text-secondary'}">${(ip.errors || 0).toLocaleString('ru')}</td>
         <td><span class="${flagClass}">● ${flagLabel}</span></td>

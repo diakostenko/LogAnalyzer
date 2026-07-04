@@ -43,7 +43,10 @@ const logSchema = new mongoose.Schema({
     topIPs: [{
         ip: String,
         count: Number,
+        errors: Number,
         flag: String, // 'suspicious' | 'watch' | 'normal'
+        country: String,
+        city: String,
     }],
     topEndpoints: [{
         path: String,

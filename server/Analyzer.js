@@ -13,6 +13,7 @@ function analyze(entries) {
         };
     }
 
+    const geoip = require('geoip-lite');
     const ipMap = {};
     const endpointMap = {};
     const hourMap = {};
@@ -75,14 +76,18 @@ function analyze(entries) {
     const topIPs = Object.entries(ipMap)
         .sort((a, b) => b[1].count - a[1].count)
         .slice(0, 20)
-        .map(([ip, data]) => ({
-            ip,
-            count: data.count,
-            errors: data.errors,
-            flag: data.count >= SUSPICIOUS_THRESHOLD ? 'suspicious'
-                : data.count >= WATCH_THRESHOLD ? 'watch'
-                    : 'normal',
-        }));
+        .map(([ip, data]) => {
+            const geo = geoip.lookup(ip);
+            return {
+                ip,
+                count: data.count,
+                errors: data.errors,
+                flag: data.count >= SUSPICIOUS_THRESHOLD ? 'suspicious'
+                    : data.count >= WATCH_THRESHOLD ? 'watch' : 'normal',
+                country: geo ? geo.country : null,
+                city: geo ? geo.city : null,
+            };
+        });
 
     // топ эндпоинтов
     const topEndpoints = Object.entries(endpointMap)

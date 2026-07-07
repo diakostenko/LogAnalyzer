@@ -170,7 +170,7 @@ function renderAnomalies(anomalies) {
           <i class="ti ${icons[a.type] || 'ti-alert-triangle'} fs-4 ${a.severity === 'critical' ? 'text-danger' : 'text-warning'}"></i>
         </div>
         <div>
-          <div class="fw-medium mb-1">${a.title}</div>
+          <div class="fw-medium mb-1 text-primary">${a.title}</div>
           <div class="text-secondary small">${a.description}</div>
         </div>
         <div class="ms-auto">
